@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>IoT Monitor – Energy & Water</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      * {
+        font-family: "Inter", sans-serif;
+      }
+
+      .glass-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: background 0.3s ease-in-out;
+      }
+
+      .glass-card:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .led {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+
+      .battery-fill {
+        transition: width 0.3s ease-out;
+        background: linear-gradient(90deg, #10b981, #34d399);
+      }
+
+      .fade-in {
+        animation: fadeIn 0.4s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body
+    class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen"
+  >
+    <div class="max-w-7xl mx-auto p-4 md:p-6">
+      <!-- Header -->
+      <header
+        class="glass-card rounded-2xl p-6 mb-6 fade-in flex flex-col md:flex-row md:items-center md:justify-between"
+      >
+        <div>
+          <h1
+            class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent"
+          >
+            IoT Energy & Water Monitor
+          </h1>
+          <p class="text-slate-400 text-sm mt-1">
+            Real-time Monitoring Paving Block Energy & Water Detection
+          </p>
+        </div>
+        <div class="text-right mt-4 md:mt-0">
+          <div id="serverTime" class="text-slate-300 font-semibold">--</div>
+          <div class="text-xs text-slate-400 mt-1">Server Time</div>
+        </div>
+      </header>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <!-- Energy Voltage -->
+        <div class="glass-card rounded-2xl p-6 fade-in">
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-sm text-slate-400 font-medium">Energy Voltage</div>
+            <div
+              class="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center"
+            >
+              <svg
+                class="w-5 h-5 text-green-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
+            </div>
+          </div>
+          <div id="voltageValue" class="text-3xl font-bold text-green-400 mb-2">
+            0.00 V
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="led bg-green-500" id="ledEnergy"></div>
+            <span id="energyStatus" class="text-xs text-slate-300">Normal</span>
+          </div>
+        </div>
+
+        <!-- Water Sensor -->
+        <div class="glass-card rounded-2xl p-6 fade-in">
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-sm text-slate-400 font-medium">Water Sensor</div>
+            <div
+              class="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center"
+            >
+              <svg
+                class="w-5 h-5 text-blue-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
+              </svg>
+            </div>
+          </div>
+          <div id="waterText" class="text-3xl font-bold text-blue-400 mb-2">
+            KERING
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="led bg-red-500" id="ledWater"></div>
+            <span class="text-xs text-slate-300">Sensor Status</span>
+          </div>
+        </div>
+
+        <!-- Battery Level -->
+        <div class="glass-card rounded-2xl p-6 fade-in">
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-sm text-slate-400 font-medium">Battery Level</div>
+            <div
+              class="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center"
+            >
+              <svg
+                class="w-5 h-5 text-yellow-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                />
+              </svg>
+            </div>
+          </div>
+          <div
+            id="batteryPercentage"
+            class="text-3xl font-bold text-yellow-400 mb-2"
+          >
+            0%
+          </div>
+          <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div
+              id="batteryFill"
+              class="battery-fill h-full"
+              style="width: 0%"
+            ></div>
+          </div>
+          <div class="text-xs text-slate-400 mt-2" id="batteryStatus">
+            Monitoring...
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <!-- Chart -->
+        <div class="lg:col-span-2 glass-card rounded-2xl p-6 fade-in">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-200">
+              Battery Level Timeline
+            </h3>
+            <div class="flex items-center gap-2 text-sm text-slate-400">
+              <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span>Live Data</span>
+            </div>
+          </div>
+          <canvas id="batteryChart" height="200"></canvas>
+        </div>
+
+        <!-- Energy Stats -->
+        <div class="glass-card rounded-2xl p-6 fade-in">
+          <h3 class="text-lg font-semibold text-slate-200 mb-4">
+            System Statistics
+          </h3>
+          <div class="space-y-4">
+            <div class="p-4 bg-slate-800/50 rounded-xl">
+              <div class="text-xs text-slate-400 mb-1">Current Voltage</div>
+              <div
+                id="currentVoltage"
+                class="text-2xl font-bold text-green-400"
+              >
+                0.00 V
+              </div>
+            </div>
+            <div class="p-4 bg-slate-800/50 rounded-xl">
+              <div class="text-xs text-slate-400 mb-1">Battery Level</div>
+              <div
+                id="currentBattery"
+                class="text-2xl font-bold text-yellow-400"
+              >
+                0%
+              </div>
+            </div>
+            <div class="p-4 bg-slate-800/50 rounded-xl">
+              <div class="text-xs text-slate-400 mb-1">Water Status</div>
+              <div id="currentWater" class="text-2xl font-bold text-blue-400">
+                KERING
+              </div>
+            </div>
+            <div class="p-4 bg-slate-800/50 rounded-xl">
+              <div class="text-xs text-slate-400 mb-1">Last Update</div>
+              <div
+                id="lastUpdateTime"
+                class="text-lg font-bold text-purple-400"
+              >
+                --
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- History Table -->
+      <div class="glass-card rounded-2xl p-6 fade-in">
+        <h3 class="text-lg font-semibold text-slate-200 mb-4">
+          Recent Activity Log
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="text-slate-400 border-b border-slate-700">
+              <tr>
+                <th class="px-4 py-3 text-left">#</th>
+                <th class="px-4 py-3 text-left">Time</th>
+                <th class="px-4 py-3 text-left">Voltage (V)</th>
+                <th class="px-4 py-3 text-left">Battery</th>
+                <th class="px-4 py-3 text-left">Water</th>
+                <th class="px-4 py-3 text-left">Status</th>
+              </tr>
+            </thead>
+            <tbody id="historyTbody" class="text-slate-300"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const socket = io();
+
+      // Data storage for chart and history
+      let batteryData = [];
+      let voltageData = [];
+      let timeLabels = [];
+      const maxDataPoints = 20;
+
+      // Chart setup
+      const ctx = document.getElementById("batteryChart").getContext("2d");
+      const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+      gradient.addColorStop(0, "rgba(34,197,94,0.3)");
+      gradient.addColorStop(1, "rgba(34,197,94,0.05)");
+
+      const chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: timeLabels,
+          datasets: [
+            {
+              label: "Battery Level (%)",
+              data: batteryData,
+              fill: true,
+              tension: 0.4,
+              borderWidth: 3,
+              pointRadius: 2,
+              backgroundColor: gradient,
+              borderColor: "rgba(34,197,94,1)",
+            },
+            {
+              label: "Voltage (V)",
+              data: voltageData,
+              fill: false,
+              tension: 0.4,
+              borderWidth: 2,
+              pointRadius: 1,
+              borderColor: "rgba(59,130,246,1)",
+              borderDash: [5, 5],
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              display: true,
+              labels: {
+                color: "rgba(255,255,255,0.7)",
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid: { color: "rgba(255,255,255,0.05)" },
+              ticks: { color: "rgba(255,255,255,0.5)" },
+            },
+            y: {
+              beginAtZero: true,
+              max: 100,
+              grid: { color: "rgba(255,255,255,0.05)" },
+              ticks: { color: "rgba(255,255,255,0.5)" },
+            },
+          },
+        },
+      });
+
+      function updateBatteryDisplay(percentage, voltage) {
+        // Update battery percentage
+        document.getElementById("batteryPercentage").innerText =
+          percentage + "%";
+        document.getElementById("currentBattery").innerText = percentage + "%";
+
+        // Update battery fill
+        const batteryFill = document.getElementById("batteryFill");
+        batteryFill.style.width = percentage + "%";
+
+        // Update battery color based on level
+        if (percentage > 70) {
+          batteryFill.style.background =
+            "linear-gradient(90deg, #10b981, #34d399)";
+        } else if (percentage > 30) {
+          batteryFill.style.background =
+            "linear-gradient(90deg, #f59e0b, #fbbf24)";
+        } else {
+          batteryFill.style.background =
+            "linear-gradient(90deg, #ef4444, #f87171)";
+        }
+
+        // Update battery status text
+        const batteryStatus = document.getElementById("batteryStatus");
+        if (percentage > 80) {
+          batteryStatus.innerText = "✓ Excellent";
+        } else if (percentage > 50) {
+          batteryStatus.innerText = "✓ Good";
+        } else if (percentage > 20) {
+          batteryStatus.innerText = "⚠️ Low";
+        } else {
+          batteryStatus.innerText = "🔋 Critical";
+        }
+
+        // Update voltage display
+        document.getElementById("voltageValue").innerText =
+          voltage.toFixed(2) + " V";
+        document.getElementById("currentVoltage").innerText =
+          voltage.toFixed(2) + " V";
+
+        // Update energy LED status
+        const ledEnergy = document.getElementById("ledEnergy");
+        if (voltage > 4.0) {
+          ledEnergy.style.backgroundColor = "#22c55e";
+          document.getElementById("energyStatus").innerText = "Excellent";
+        } else if (voltage > 3.5) {
+          ledEnergy.style.backgroundColor = "#f59e0b";
+          document.getElementById("energyStatus").innerText = "Good";
+        } else {
+          ledEnergy.style.backgroundColor = "#ef4444";
+          document.getElementById("energyStatus").innerText = "Low";
+        }
+      }
+
+      function updateWaterDisplay(waterStatus) {
+        const waterText = document.getElementById("waterText");
+        const ledWater = document.getElementById("ledWater");
+        const currentWater = document.getElementById("currentWater");
+
+        if (waterStatus === "TERDETEKSI" || waterStatus === "Terdeteksi Air") {
+          waterText.innerText = "TERDETEKSI AIR";
+          currentWater.innerText = "TERDETEKSI AIR";
+          ledWater.style.backgroundColor = "#06b6d4";
+          waterText.className = "text-3xl font-bold text-red-400 mb-2";
+          currentWater.className = "text-2xl font-bold text-red-400";
+        } else {
+          waterText.innerText = "KERING";
+          currentWater.innerText = "KERING";
+          ledWater.style.backgroundColor = "#64748b";
+          waterText.className = "text-3xl font-bold text-blue-400 mb-2";
+          currentWater.className = "text-2xl font-bold text-blue-400";
+        }
+      }
+
+      function updateChart(percentage, voltage, timestamp) {
+        const timeString = new Date(timestamp).toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+
+        // Add new data
+        timeLabels.push(timeString);
+        batteryData.push(percentage);
+        voltageData.push(voltage);
+
+        // Limit data points
+        if (timeLabels.length > maxDataPoints) {
+          timeLabels.shift();
+          batteryData.shift();
+          voltageData.shift();
+        }
+
+        // Update chart
+        chart.update("none");
+      }
+
+      function addHistoryEntry(entry) {
+        const historyTbody = document.getElementById("historyTbody");
+        const timeString = new Date(entry.timestamp).toLocaleTimeString(
+          "id-ID",
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }
+        );
+
+        const tr = document.createElement("tr");
+        tr.className =
+          "border-t border-slate-700/50 hover:bg-slate-800/30 transition-colors";
+
+        const waterBadge =
+          entry.statusAir === "TERDETEKSI" ||
+          entry.statusAir === "Terdeteksi Air"
+            ? '<span class="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs">Air Detected</span>'
+            : '<span class="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">Dry</span>';
+
+        const batteryBadge =
+          entry.persentase > 70
+            ? '<span class="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">Excellent</span>'
+            : entry.persentase > 50
+            ? '<span class="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded text-xs">Good</span>'
+            : entry.persentase > 20
+            ? '<span class="px-2 py-1 bg-orange-500/20 text-orange-400 rounded text-xs">Low</span>'
+            : '<span class="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs">Critical</span>';
+
+        tr.innerHTML = `
+          <td class="px-4 py-3">${historyTbody.children.length + 1}</td>
+          <td class="px-4 py-3">${timeString}</td>
+          <td class="px-4 py-3 font-mono text-green-400">${entry.tegangan.toFixed(
+            2
+          )} V</td>
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-2">
+              <span class="font-mono">${entry.persentase}%</span>
+              ${batteryBadge}
+            </div>
+          </td>
+          <td class="px-4 py-3">${waterBadge}</td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-1 bg-slate-500/20 text-slate-400 rounded text-xs">Active</span>
+          </td>
+        `;
+
+        historyTbody.insertBefore(tr, historyTbody.firstChild);
+
+        // Keep only last 10 entries
+        if (historyTbody.children.length > 10) {
+          historyTbody.removeChild(historyTbody.lastChild);
+        }
+      }
+
+      // Socket event listeners
+      socket.on("arduinoData", (data) => {
+        console.log("Data received:", data);
+
+        // Update displays
+        updateBatteryDisplay(data.persentase, data.tegangan);
+        updateWaterDisplay(data.statusAir);
+        updateChart(data.persentase, data.tegangan, data.timestamp);
+        addHistoryEntry(data);
+
+        // Update last update time
+        document.getElementById("lastUpdateTime").innerText = new Date(
+          data.timestamp
+        ).toLocaleTimeString("id-ID");
+      });
+
+      socket.on("connect", () => {
+        console.log("Connected to server");
+      });
+
+      socket.on("disconnect", () => {
+        console.log("Disconnected from server");
+      });
+
+      // Update server time
+      setInterval(() => {
+        document.getElementById("serverTime").innerText =
+          new Date().toLocaleString("id-ID");
+      }, 1000);
+
+      // Initialize with default values
+      updateBatteryDisplay(0, 0);
+      updateWaterDisplay("KERING");
+    </script>
+  </body>
+</html>

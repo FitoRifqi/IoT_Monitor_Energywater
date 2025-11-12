@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>IoT Eco-Smart Jalanan</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      * {
+        font-family: "Inter", sans-serif;
+      }
+
+      body {
+        background: linear-gradient(
+          135deg,
+          #667eea 0%,
+          #764ba2 50%,
+          #f093fb 100%
+        );
+        background-size: 400% 400%;
+        animation: gradientShift 15s ease infinite;
+      }
+
+      @keyframes gradientShift {
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
+        }
+      }
+
+      .glass-morphism {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+      }
+
+      .card-hover {
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+
+      .card-hover:hover {
+        transform: translateY(-12px) scale(1.02);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      }
+
+      .energy-pulse {
+        animation: energyPulse 2s ease-in-out infinite;
+      }
+
+      @keyframes energyPulse {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.05);
+          opacity: 0.8;
+        }
+      }
+
+      .water-wave {
+        animation: waterWave 3s ease-in-out infinite;
+      }
+
+      @keyframes waterWave {
+        0%,
+        100% {
+          transform: translateY(0) rotate(0deg);
+        }
+        25% {
+          transform: translateY(-5px) rotate(5deg);
+        }
+        75% {
+          transform: translateY(5px) rotate(-5deg);
+        }
+      }
+
+      .lamp-glow {
+        filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.6));
+        animation: lampGlow 2s ease-in-out infinite;
+      }
+
+      @keyframes lampGlow {
+        0%,
+        100% {
+          filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.6));
+        }
+        50% {
+          filter: drop-shadow(0 0 30px rgba(251, 191, 36, 0.9));
+        }
+      }
+
+      .charging-bar {
+        transition: width 0.5s ease-out;
+        background: linear-gradient(90deg, #10b981, #34d399, #6ee7b7);
+        background-size: 200% 100%;
+        animation: shimmer 2s linear infinite;
+      }
+
+      @keyframes shimmer {
+        0% {
+          background-position: -200% 0;
+        }
+        100% {
+          background-position: 200% 0;
+        }
+      }
+
+      .stat-number {
+        font-variant-numeric: tabular-nums;
+        transition: all 0.3s ease;
+      }
+
+      .fade-in-up {
+        animation: fadeInUp 0.6s ease-out;
+      }
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .floating {
+        animation: floating 3s ease-in-out infinite;
+      }
+
+      @keyframes floating {
+        0%,
+        100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-20px);
+        }
+      }
+
+      .battery-indicator {
+        position: relative;
+        width: 60px;
+        height: 28px;
+        border: 3px solid rgba(255, 255, 255, 0.8);
+        border-radius: 6px;
+        padding: 2px;
+      }
+
+      .battery-indicator::after {
+        content: "";
+        position: absolute;
+        right: -8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 12px;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 0 2px 2px 0;
+      }
+
+      .battery-level {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.5s ease;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-white">
+    <!-- Floating particles background -->
+    <div
+      class="fixed inset-0 overflow-hidden pointer-events-none"
+      style="z-index: 0"
+    >
+      <div
+        class="absolute w-2 h-2 bg-white rounded-full opacity-30 floating"
+        style="top: 20%; left: 10%; animation-delay: 0s"
+      ></div>
+      <div
+        class="absolute w-3 h-3 bg-white rounded-full opacity-20 floating"
+        style="top: 60%; left: 80%; animation-delay: 1s"
+      ></div>
+      <div
+        class="absolute w-2 h-2 bg-white rounded-full opacity-25 floating"
+        style="top: 40%; left: 70%; animation-delay: 2s"
+      ></div>
+      <div
+        class="absolute w-4 h-4 bg-white rounded-full opacity-15 floating"
+        style="top: 80%; left: 20%; animation-delay: 1.5s"
+      ></div>
+    </div>
+
+    <div class="relative" style="z-index: 1">
+      <!-- Header -->
+      <header class="glass-morphism shadow-2xl">
+        <div
+          class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center p-6 gap-4"
+        >
+          <div class="flex items-center gap-4">
+            <div
+              class="w-14 h-14 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg transform hover:rotate-12 transition-transform"
+            >
+              <svg
+                class="w-8 h-8"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.5"
+                  d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-2xl md:text-3xl font-bold tracking-tight">
+                IoT Eco-Smart Jalanan
+              </h1>
+              <p class="text-white/70 text-sm mt-1">
+                Sistem Monitoring Energi Terbarukan
+              </p>
+            </div>
+          </div>
+          <a
+            href="/admin"
+            class="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-6 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 shadow-lg"
+          >
+            🔐 Login Admin
+          </a>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="max-w-7xl mx-auto p-6 space-y-8">
+        <!-- Hero Stats -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in-up">
+          <!-- Energy Voltage -->
+          <div class="glass-morphism rounded-3xl p-8 card-hover">
+            <div class="flex items-start justify-between mb-6">
+              <div class="flex-1">
+                <p class="text-white/70 text-sm font-medium mb-2">
+                  ⚡ Tegangan Energi
+                </p>
+                <p
+                  id="voltageValue"
+                  class="text-4xl font-bold stat-number energy-pulse"
+                >
+                  -
+                </p>
+              </div>
+              <div
+                class="w-16 h-16 bg-gradient-to-br from-green-400/30 to-emerald-600/30 rounded-2xl flex items-center justify-center"
+              >
+                <svg
+                  class="w-8 h-8 text-green-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
+                </svg>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  id="voltageBar"
+                  class="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-500"
+                  style="width: 0%"
+                ></div>
+              </div>
+              <span class="text-xs text-white/60">MAX</span>
+            </div>
+          </div>
+
+          <!-- Water Status -->
+          <div class="glass-morphism rounded-3xl p-8 card-hover">
+            <div class="flex items-start justify-between mb-6">
+              <div class="flex-1">
+                <p class="text-white/70 text-sm font-medium mb-2">
+                  💧 Status Air
+                </p>
+                <p id="waterStatus" class="text-4xl font-bold stat-number">-</p>
+              </div>
+              <div
+                class="w-16 h-16 bg-gradient-to-br from-blue-400/30 to-cyan-600/30 rounded-2xl flex items-center justify-center water-wave"
+              >
+                <svg
+                  class="w-8 h-8 text-blue-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+              </div>
+            </div>
+            <div id="waterIndicator" class="flex items-center gap-2 text-sm">
+              <div class="w-3 h-3 rounded-full bg-gray-400"></div>
+              <span class="text-white/80">Menunggu data...</span>
+            </div>
+          </div>
+
+          <!-- System Status -->
+          <div class="glass-morphism rounded-3xl p-8 card-hover">
+            <div class="flex items-start justify-between mb-6">
+              <div class="flex-1">
+                <p class="text-white/70 text-sm font-medium mb-2">
+                  🔋 Level Baterai
+                </p>
+                <p id="batteryLevel" class="text-4xl font-bold stat-number">
+                  -
+                </p>
+              </div>
+              <div
+                class="w-16 h-16 bg-gradient-to-br from-yellow-400/30 to-orange-600/30 rounded-2xl flex items-center justify-center"
+              >
+                <svg
+                  id="batteryIcon"
+                  class="w-8 h-8 text-yellow-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                  />
+                </svg>
+              </div>
+            </div>
+            <div id="systemIndicator" class="flex items-center gap-2 text-sm">
+              <div class="w-3 h-3 rounded-full bg-gray-400"></div>
+              <span class="text-white/80">Monitoring...</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Battery Charging Section -->
+        <section
+          class="glass-morphism rounded-3xl p-8 fade-in-up"
+          style="animation-delay: 0.2s"
+        >
+          <div
+            class="flex flex-col md:flex-row items-center justify-between gap-6"
+          >
+            <div class="flex-1">
+              <h2 class="text-2xl font-bold mb-2">Status Pengisian Baterai</h2>
+              <p class="text-white/70 mb-6">
+                Energi dari paving block mengisi baterai secara otomatis
+              </p>
+
+              <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-white/80">Kapasitas Baterai</span>
+                  <span id="batteryPercentage" class="text-2xl font-bold"
+                    >0%</span
+                  >
+                </div>
+
+                <div
+                  class="relative h-8 bg-white/10 rounded-full overflow-hidden"
+                >
+                  <div
+                    id="batteryBar"
+                    class="charging-bar h-full rounded-full"
+                    style="width: 0%"
+                  ></div>
+                  <div
+                    class="absolute inset-0 flex items-center justify-center text-sm font-semibold"
+                    id="batteryStatus"
+                  >
+                    Menunggu data...
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4 text-center text-sm">
+                  <div>
+                    <div class="text-white/60">Tegangan</div>
+                    <div id="voltage" class="font-semibold text-lg">0.0V</div>
+                  </div>
+                  <div>
+                    <div class="text-white/60">Level</div>
+                    <div id="currentLevel" class="font-semibold text-lg">
+                      0%
+                    </div>
+                  </div>
+                  <div>
+                    <div class="text-white/60">Status Air</div>
+                    <div id="waterText" class="font-semibold text-lg">-</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex-shrink-0">
+              <div class="relative w-48 h-48">
+                <svg class="transform -rotate-90 w-48 h-48">
+                  <circle
+                    cx="96"
+                    cy="96"
+                    r="88"
+                    stroke="rgba(255,255,255,0.1)"
+                    stroke-width="12"
+                    fill="none"
+                  />
+                  <circle
+                    id="batteryCircle"
+                    cx="96"
+                    cy="96"
+                    r="88"
+                    stroke="url(#gradient)"
+                    stroke-width="12"
+                    fill="none"
+                    stroke-dasharray="552.92"
+                    stroke-dashoffset="552.92"
+                    stroke-linecap="round"
+                    style="transition: stroke-dashoffset 0.5s ease"
+                  />
+                  <defs>
+                    <linearGradient
+                      id="gradient"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="100%"
+                    >
+                      <stop
+                        offset="0%"
+                        style="stop-color: #10b981; stop-opacity: 1"
+                      />
+                      <stop
+                        offset="100%"
+                        style="stop-color: #34d399; stop-opacity: 1"
+                      />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div
+                  class="absolute inset-0 flex flex-col items-center justify-center"
+                >
+                  <div id="batteryIconMain" class="text-6xl mb-2">🔋</div>
+                  <div class="text-xs text-white/60">Level Baterai</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- System Description -->
+        <section
+          class="glass-morphism rounded-3xl p-8 fade-in-up"
+          style="animation-delay: 0.3s"
+        >
+          <div class="flex items-start gap-6">
+            <div
+              class="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-purple-400/30 to-pink-600/30 rounded-2xl flex items-center justify-center"
+            >
+              <svg
+                class="w-10 h-10 text-purple-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h2 class="text-2xl font-bold mb-4">Tentang Sistem</h2>
+              <p class="text-white/80 leading-relaxed mb-4">
+                Sistem IoT Eco-Smart Jalanan memanfaatkan energi dari
+                <strong>paving block</strong> yang dilengkapi dengan teknologi
+                piezoelectric. Setiap kali ada tekanan dari kendaraan dan
+                pejalan kaki, sistem menghasilkan energi listrik yang disimpan
+                dalam baterai.
+              </p>
+              <p class="text-white/80 leading-relaxed">
+                Sensor air terintegrasi mendeteksi genangan untuk sistem
+                peringatan dini banjir. Semua data ditampilkan secara
+                <strong>realtime</strong> untuk pemantauan kondisi jalan dan
+                cadangan energi terbarukan.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div class="bg-white/5 rounded-xl p-4">
+                  <div class="text-green-400 font-semibold mb-1">
+                    ✓ Energi Terbarukan
+                  </div>
+                  <div class="text-sm text-white/70">
+                    Memanfaatkan tekanan jalan
+                  </div>
+                </div>
+                <div class="bg-white/5 rounded-xl p-4">
+                  <div class="text-blue-400 font-semibold mb-1">
+                    ✓ Deteksi Banjir
+                  </div>
+                  <div class="text-sm text-white/70">
+                    Monitoring genangan air
+                  </div>
+                </div>
+                <div class="bg-white/5 rounded-xl p-4">
+                  <div class="text-purple-400 font-semibold mb-1">
+                    ✓ IoT Realtime
+                  </div>
+                  <div class="text-sm text-white/70">
+                    Data langsung ter-update
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Footer -->
+      <footer class="glass-morphism mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+          <p class="text-white/70">
+            © 2025 IoT Eco-Smart Jalanan | Sistem Energi Terbarukan & Monitoring
+            Cerdas
+          </p>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      const socket = io();
+
+      // Initialize with default values
+      let batteryLevel = 0;
+      let currentVoltage = 0;
+      let waterStatus = "KERING";
+
+      function updateBattery(percentage, voltage) {
+        batteryLevel = percentage;
+        currentVoltage = voltage;
+
+        // Update battery percentage
+        document.getElementById("batteryPercentage").innerText =
+          percentage + "%";
+        document.getElementById("batteryLevel").innerText = percentage + "%";
+        document.getElementById("currentLevel").innerText = percentage + "%";
+
+        // Update battery bar
+        document.getElementById("batteryBar").style.width = percentage + "%";
+
+        // Update circular progress
+        const circumference = 552.92;
+        const offset = circumference - (percentage / 100) * circumference;
+        document.getElementById("batteryCircle").style.strokeDashoffset =
+          offset;
+
+        // Update battery icon and status
+        const batteryIcon = document.getElementById("batteryIconMain");
+        const batteryStatus = document.getElementById("batteryStatus");
+
+        if (percentage >= 80) {
+          batteryIcon.innerText = "🔋";
+          batteryStatus.innerText = "✓ Baterai penuh";
+          batteryStatus.className =
+            "absolute inset-0 flex items-center justify-center text-sm font-semibold text-green-400";
+        } else if (percentage >= 50) {
+          batteryIcon.innerText = "🔋";
+          batteryStatus.innerText = "✓ Kondisi baik";
+          batteryStatus.className =
+            "absolute inset-0 flex items-center justify-center text-sm font-semibold text-green-400";
+        } else if (percentage >= 20) {
+          batteryIcon.innerText = "🔋";
+          batteryStatus.innerText = "⚠️ Level menengah";
+          batteryStatus.className =
+            "absolute inset-0 flex items-center justify-center text-sm font-semibold text-yellow-400";
+        } else {
+          batteryIcon.innerText = "🪫";
+          batteryStatus.innerText = "🔋 Level kritis";
+          batteryStatus.className =
+            "absolute inset-0 flex items-center justify-center text-sm font-semibold text-red-400";
+        }
+
+        // Update voltage display
+        document.getElementById("voltageValue").innerText =
+          voltage.toFixed(2) + " V";
+        document.getElementById("voltage").innerText =
+          voltage.toFixed(2) + " V";
+
+        // Update voltage bar (assuming max 5V)
+        const voltagePercentage = Math.min(100, (voltage / 5) * 100);
+        document.getElementById("voltageBar").style.width =
+          voltagePercentage + "%";
+      }
+
+      function updateWaterStatus(status) {
+        waterStatus = status;
+        const waterStatusEl = document.getElementById("waterStatus");
+        const waterIndicator = document.getElementById("waterIndicator");
+        const waterText = document.getElementById("waterText");
+
+        if (status === "TERDETEKSI" || status === "Terdeteksi Air") {
+          waterStatusEl.innerText = "TERDETEKSI";
+          waterStatusEl.className =
+            "text-4xl font-bold stat-number text-red-400";
+          waterText.innerText = "TERDETEKSI";
+          waterText.className = "font-semibold text-lg text-red-400";
+          waterIndicator.innerHTML = `
+            <div class="w-3 h-3 rounded-full bg-red-400 animate-pulse"></div>
+            <span class="text-white/80">⚠️ Terdeteksi air!</span>
+          `;
+        } else {
+          waterStatusEl.innerText = "KERING";
+          waterStatusEl.className =
+            "text-4xl font-bold stat-number text-blue-400";
+          waterText.innerText = "KERING";
+          waterText.className = "font-semibold text-lg text-blue-400";
+          waterIndicator.innerHTML = `
+            <div class="w-3 h-3 rounded-full bg-green-400"></div>
+            <span class="text-white/80">✓ Kondisi normal</span>
+          `;
+        }
+      }
+
+      function updateSystemStatus() {
+        const systemIndicator = document.getElementById("systemIndicator");
+        if (batteryLevel > 50 && waterStatus === "KERING") {
+          systemIndicator.innerHTML = `
+            <div class="w-3 h-3 rounded-full bg-green-400"></div>
+            <span class="text-white/80">✓ Sistem optimal</span>
+          `;
+        } else if (waterStatus === "TERDETEKSI") {
+          systemIndicator.innerHTML = `
+            <div class="w-3 h-3 rounded-full bg-red-400 animate-pulse"></div>
+            <span class="text-white/80">⚠️ Peringatan air!</span>
+          `;
+        } else if (batteryLevel < 20) {
+          systemIndicator.innerHTML = `
+            <div class="w-3 h-3 rounded-full bg-yellow-400 animate-pulse"></div>
+            <span class="text-white/80">⚠️ Baterai rendah</span>
+          `;
+        } else {
+          systemIndicator.innerHTML = `
+            <div class="w-3 h-3 rounded-full bg-blue-400"></div>
+            <span class="text-white/80">✓ Monitoring aktif</span>
+          `;
+        }
+      }
+
+      // Socket event listeners
+      socket.on("arduinoData", (data) => {
+        console.log("Data received:", data);
+
+        // Update displays with real data from Arduino
+        updateBattery(data.persentase, data.tegangan);
+        updateWaterStatus(data.statusAir);
+        updateSystemStatus();
+      });
+
+      socket.on("connect", () => {
+        console.log("Connected to server");
+        document.getElementById("systemIndicator").innerHTML = `
+          <div class="w-3 h-3 rounded-full bg-green-400"></div>
+          <span class="text-white/80">✓ Terhubung ke server</span>
+        `;
+      });
+
+      socket.on("disconnect", () => {
+        console.log("Disconnected from server");
+        document.getElementById("systemIndicator").innerHTML = `
+          <div class="w-3 h-3 rounded-full bg-red-400 animate-pulse"></div>
+          <span class="text-white/80">❌ Terputus dari server</span>
+        `;
+      });
+
+      // Initialize with default values
+      updateBattery(0, 0);
+      updateWaterStatus("KERING");
+      updateSystemStatus();
+    </script>
+  </body>
+</html>
