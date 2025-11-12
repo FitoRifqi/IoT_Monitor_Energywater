@@ -11,39 +11,32 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-
     <style>
       * {
         font-family: "Inter", sans-serif;
       }
-
       .glass-card {
         background: rgba(255, 255, 255, 0.05);
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.1);
         transition: background 0.3s ease-in-out;
       }
-
       .glass-card:hover {
         background: rgba(255, 255, 255, 0.08);
       }
-
       .led {
         width: 16px;
         height: 16px;
         border-radius: 50%;
         display: inline-block;
       }
-
       .battery-fill {
         transition: width 0.3s ease-out;
         background: linear-gradient(90deg, #10b981, #34d399);
       }
-
       .fade-in {
         animation: fadeIn 0.4s ease-out;
       }
-
       @keyframes fadeIn {
         from {
           opacity: 0;
@@ -60,7 +53,6 @@
     class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen"
   >
     <div class="max-w-7xl mx-auto p-4 md:p-6">
-      <!-- Header -->
       <header
         class="glass-card rounded-2xl p-6 mb-6 fade-in flex flex-col md:flex-row md:items-center md:justify-between"
       >
@@ -80,9 +72,7 @@
         </div>
       </header>
 
-      <!-- Stats Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <!-- Energy Voltage -->
         <div class="glass-card rounded-2xl p-6 fade-in">
           <div class="flex items-center justify-between mb-4">
             <div class="text-sm text-slate-400 font-medium">Energy Voltage</div>
@@ -113,7 +103,6 @@
           </div>
         </div>
 
-        <!-- Water Sensor -->
         <div class="glass-card rounded-2xl p-6 fade-in">
           <div class="flex items-center justify-between mb-4">
             <div class="text-sm text-slate-400 font-medium">Water Sensor</div>
@@ -144,7 +133,6 @@
           </div>
         </div>
 
-        <!-- Battery Level -->
         <div class="glass-card rounded-2xl p-6 fade-in">
           <div class="flex items-center justify-between mb-4">
             <div class="text-sm text-slate-400 font-medium">Battery Level</div>
@@ -185,22 +173,36 @@
         </div>
       </div>
 
+      <div class="glass-card rounded-2xl p-6 fade-in mb-6">
+        <h3 class="text-lg font-semibold text-slate-200 mb-4">
+          Kontrol LED (via Superkapasitor)
+        </h3>
+        <div class="flex space-x-4 mb-4">
+          <button
+            id="btnLedOn"
+            class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-400"
+          >
+            NYALAKAN
+          </button>
+          <button
+            id="btnLedOff"
+            class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-400"
+          >
+            MATIKAN
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="led bg-slate-600" id="ledControlStatus"></div>
+          <span id="ledControlText" class="text-xs text-slate-300"
+            >Status: OFF</span
+          >
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <!-- Chart -->
         <div class="lg:col-span-2 glass-card rounded-2xl p-6 fade-in">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-slate-200">
-              Battery Level Timeline
-            </h3>
-            <div class="flex items-center gap-2 text-sm text-slate-400">
-              <div class="w-2 h-2 bg-green-400 rounded-full"></div>
-              <span>Live Data</span>
-            </div>
-          </div>
           <canvas id="batteryChart" height="200"></canvas>
         </div>
-
-        <!-- Energy Stats -->
         <div class="glass-card rounded-2xl p-6 fade-in">
           <h3 class="text-lg font-semibold text-slate-200 mb-4">
             System Statistics
@@ -243,7 +245,6 @@
         </div>
       </div>
 
-      <!-- History Table -->
       <div class="glass-card rounded-2xl p-6 fade-in">
         <h3 class="text-lg font-semibold text-slate-200 mb-4">
           Recent Activity Log
@@ -267,22 +268,39 @@
     </div>
 
     <script>
+      // --- KONTROL LED ---
+      // PERBAIKAN: Ganti IP ke 111
+      const SERVER_URL = "http://192.168.18.111:3000";
+
+      async function setLedStatus(status) {
+        console.log("Mengirim perintah LED: " + status);
+        try {
+          await fetch(SERVER_URL + "/api/led-status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: status }),
+          });
+        } catch (error) {
+          console.error("Gagal mengirim perintah LED:", error);
+        }
+      }
+      // --- AKHIR KONTROL LED ---
+
       const socket = io();
 
-      // Data storage for chart and history
+      // ... (Variabel chart)
       let batteryData = [];
       let voltageData = [];
       let timeLabels = [];
       const maxDataPoints = 20;
 
-      // Chart setup
+      // ... (Setup Chart)
       const ctx = document.getElementById("batteryChart").getContext("2d");
       const gradient = ctx.createLinearGradient(0, 0, 0, 400);
       gradient.addColorStop(0, "rgba(34,197,94,0.3)");
       gradient.addColorStop(1, "rgba(34,197,94,0.05)");
-
       const chart = new Chart(ctx, {
-        type: "line",
+        /* ... Opsi Chart ... */ type: "line",
         data: {
           labels: timeLabels,
           datasets: [
@@ -314,9 +332,7 @@
           plugins: {
             legend: {
               display: true,
-              labels: {
-                color: "rgba(255,255,255,0.7)",
-              },
+              labels: { color: "rgba(255,255,255,0.7)" },
             },
           },
           scales: {
@@ -334,17 +350,13 @@
         },
       });
 
+      // ... (Fungsi updateBatteryDisplay)
       function updateBatteryDisplay(percentage, voltage) {
-        // Update battery percentage
         document.getElementById("batteryPercentage").innerText =
           percentage + "%";
         document.getElementById("currentBattery").innerText = percentage + "%";
-
-        // Update battery fill
         const batteryFill = document.getElementById("batteryFill");
         batteryFill.style.width = percentage + "%";
-
-        // Update battery color based on level
         if (percentage > 70) {
           batteryFill.style.background =
             "linear-gradient(90deg, #10b981, #34d399)";
@@ -355,8 +367,6 @@
           batteryFill.style.background =
             "linear-gradient(90deg, #ef4444, #f87171)";
         }
-
-        // Update battery status text
         const batteryStatus = document.getElementById("batteryStatus");
         if (percentage > 80) {
           batteryStatus.innerText = "✓ Excellent";
@@ -367,14 +377,10 @@
         } else {
           batteryStatus.innerText = "🔋 Critical";
         }
-
-        // Update voltage display
         document.getElementById("voltageValue").innerText =
           voltage.toFixed(2) + " V";
         document.getElementById("currentVoltage").innerText =
           voltage.toFixed(2) + " V";
-
-        // Update energy LED status
         const ledEnergy = document.getElementById("ledEnergy");
         if (voltage > 4.0) {
           ledEnergy.style.backgroundColor = "#22c55e";
@@ -388,11 +394,11 @@
         }
       }
 
+      // ... (Fungsi updateWaterDisplay)
       function updateWaterDisplay(waterStatus) {
         const waterText = document.getElementById("waterText");
         const ledWater = document.getElementById("ledWater");
         const currentWater = document.getElementById("currentWater");
-
         if (waterStatus === "TERDETEKSI" || waterStatus === "Terdeteksi Air") {
           waterText.innerText = "TERDETEKSI AIR";
           currentWater.innerText = "TERDETEKSI AIR";
@@ -408,50 +414,39 @@
         }
       }
 
+      // ... (Fungsi updateChart)
       function updateChart(percentage, voltage, timestamp) {
         const timeString = new Date(timestamp).toLocaleTimeString("id-ID", {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
         });
-
-        // Add new data
         timeLabels.push(timeString);
         batteryData.push(percentage);
         voltageData.push(voltage);
-
-        // Limit data points
         if (timeLabels.length > maxDataPoints) {
           timeLabels.shift();
           batteryData.shift();
           voltageData.shift();
         }
-
-        // Update chart
         chart.update("none");
       }
 
+      // ... (Fungsi addHistoryEntry)
       function addHistoryEntry(entry) {
         const historyTbody = document.getElementById("historyTbody");
         const timeString = new Date(entry.timestamp).toLocaleTimeString(
           "id-ID",
-          {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }
+          { hour: "2-digit", minute: "2-digit", second: "2-digit" }
         );
-
         const tr = document.createElement("tr");
         tr.className =
           "border-t border-slate-700/50 hover:bg-slate-800/30 transition-colors";
-
         const waterBadge =
           entry.statusAir === "TERDETEKSI" ||
           entry.statusAir === "Terdeteksi Air"
             ? '<span class="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs">Air Detected</span>'
             : '<span class="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">Dry</span>';
-
         const batteryBadge =
           entry.persentase > 70
             ? '<span class="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">Excellent</span>'
@@ -460,28 +455,18 @@
             : entry.persentase > 20
             ? '<span class="px-2 py-1 bg-orange-500/20 text-orange-400 rounded text-xs">Low</span>'
             : '<span class="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs">Critical</span>';
-
         tr.innerHTML = `
           <td class="px-4 py-3">${historyTbody.children.length + 1}</td>
           <td class="px-4 py-3">${timeString}</td>
           <td class="px-4 py-3 font-mono text-green-400">${entry.tegangan.toFixed(
             2
           )} V</td>
-          <td class="px-4 py-3">
-            <div class="flex items-center gap-2">
-              <span class="font-mono">${entry.persentase}%</span>
-              ${batteryBadge}
-            </div>
-          </td>
+          <td class="px-4 py-3"><div class="flex items-center gap-2"><span class="font-mono">${
+            entry.persentase
+          }%</span>${batteryBadge}</div></td>
           <td class="px-4 py-3">${waterBadge}</td>
-          <td class="px-4 py-3">
-            <span class="px-2 py-1 bg-slate-500/20 text-slate-400 rounded text-xs">Active</span>
-          </td>
-        `;
-
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-slate-500/20 text-slate-400 rounded text-xs">Active</span></td>`;
         historyTbody.insertBefore(tr, historyTbody.firstChild);
-
-        // Keep only last 10 entries
         if (historyTbody.children.length > 10) {
           historyTbody.removeChild(historyTbody.lastChild);
         }
@@ -490,14 +475,10 @@
       // Socket event listeners
       socket.on("arduinoData", (data) => {
         console.log("Data received:", data);
-
-        // Update displays
         updateBatteryDisplay(data.persentase, data.tegangan);
         updateWaterDisplay(data.statusAir);
         updateChart(data.persentase, data.tegangan, data.timestamp);
         addHistoryEntry(data);
-
-        // Update last update time
         document.getElementById("lastUpdateTime").innerText = new Date(
           data.timestamp
         ).toLocaleTimeString("id-ID");
@@ -506,7 +487,6 @@
       socket.on("connect", () => {
         console.log("Connected to server");
       });
-
       socket.on("disconnect", () => {
         console.log("Disconnected from server");
       });
@@ -520,6 +500,30 @@
       // Initialize with default values
       updateBatteryDisplay(0, 0);
       updateWaterDisplay("KERING");
+
+      // --- TAMBAHAN: Listener untuk tombol dan status LED ---
+      document.addEventListener("DOMContentLoaded", () => {
+        const btnLedOn = document.getElementById("btnLedOn");
+        const btnLedOff = document.getElementById("btnLedOff");
+        if (btnLedOn)
+          btnLedOn.addEventListener("click", () => setLedStatus("ON"));
+        if (btnLedOff)
+          btnLedOff.addEventListener("click", () => setLedStatus("OFF"));
+      });
+
+      socket.on("ledStatusUpdate", (data) => {
+        console.log("Menerima status LED: ", data.status);
+        const ledControlStatus = document.getElementById("ledControlStatus");
+        const ledControlText = document.getElementById("ledControlText");
+        if (data.status === "ON") {
+          ledControlStatus.style.backgroundColor = "#22c55e"; // Warna hijau
+          ledControlText.innerText = "Status: ON";
+        } else {
+          ledControlStatus.style.backgroundColor = "#64748b"; // Warna abu-abu
+          ledControlText.innerText = "Status: OFF";
+        }
+      });
+      // --- AKHIR TAMBAHAN ---
     </script>
   </body>
 </html>
