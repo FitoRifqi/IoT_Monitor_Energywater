@@ -128,7 +128,7 @@ Kontribusi sangat diterima\! Jika Anda memiliki ide untuk perbaikan atau menemuk
 Proyek ini dilisensikan di bawah **MIT License**.
 
 ```
-Copyright (c) 2025 [Nama Anda/Organisasi]
+Copyright (c) 2025 [Fito Rifqi Dwi Fatoni]
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
